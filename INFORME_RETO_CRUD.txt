@@ -1,0 +1,131 @@
+RETO: CRUD EN MEMORIA — API DE ÁLBUM DE FOTOS
+================================================
+
+Proyecto: album-express
+Fecha: 11 de noviembre de 2026
+
+1. OBJETIVO
+-----------
+Completar el CRUD en memoria de /api/fotos, agregando las rutas PATCH y
+DELETE. PATCH actualiza únicamente los campos recibidos. DELETE elimina una
+foto y responde HTTP 204 sin cuerpo.
+
+2. IMPLEMENTACIÓN REALIZADA
+---------------------------
+Ruta PATCH /api/fotos/:id
+- Busca la foto por su id.
+- Si no existe, devuelve 404 con un mensaje JSON.
+- Acepta los campos titulo, descripcion y calificacion.
+- Solo cambia los campos enviados: por eso se compara cada campo con
+  undefined. Esto permite, por ejemplo, asignar calificacion: 0.
+- El id no se puede editar.
+- Si todo sale bien, devuelve 200 y la foto actualizada.
+
+Ruta DELETE /api/fotos/:id
+- Busca la posición de la foto con findIndex.
+- Si no existe, devuelve 404.
+- La borra con fotos.splice(indice, 1).
+- Devuelve 204 No Content; por definición, esta respuesta no tiene cuerpo.
+
+También se mejoró POST: el nuevo id se calcula tomando el id mayor más 1.
+Esto evita repetir ids cuando antes se eliminó una foto.
+
+3. CÓMO EJECUTAR
+----------------
+En una terminal, dentro de la carpeta album-express:
+
+  npm run dev
+
+Si el modo --watch muestra el error EMFILE (demasiados archivos abiertos),
+ejecutar temporalmente sin observación automática:
+
+  node src/server.js
+
+La API queda disponible en http://localhost:3000.
+
+4. PRUEBAS PARA POSTMAN O THUNDER CLIENT
+----------------------------------------
+A. Listar fotos iniciales
+   GET http://localhost:3000/api/fotos
+   Resultado esperado: 200 y las fotos con id 1 y 2.
+
+B. Crear una foto
+   POST http://localhost:3000/api/fotos
+   Header: Content-Type: application/json
+   Body JSON:
+   {
+     "titulo": "Laguna de Quilotoa",
+     "descripcion": "Excursión de fin de semana",
+     "calificacion": 5
+   }
+   Resultado esperado: 201 Created y una nueva foto (normalmente id 3).
+
+C. Actualización parcial (el requisito PATCH)
+   PATCH http://localhost:3000/api/fotos/1
+   Header: Content-Type: application/json
+   Body JSON:
+   {
+     "calificacion": 5
+   }
+   Resultado esperado: 200 OK. Solo cambia calificacion; titulo y descripcion
+   conservan su valor anterior.
+
+D. Actualizar una foto inexistente
+   PATCH http://localhost:3000/api/fotos/999
+   Body JSON:
+   { "titulo": "No existe" }
+   Resultado esperado: 404 Not Found.
+
+E. Eliminar una foto (el requisito DELETE)
+   DELETE http://localhost:3000/api/fotos/3
+   Resultado esperado: 204 No Content y una respuesta vacía.
+
+F. Confirmar que se eliminó
+   GET http://localhost:3000/api/fotos/3
+   Resultado esperado: 404 Not Found.
+
+5. RESULTADO AL REINICIAR EL SERVIDOR
+-------------------------------------
+Después de crear, editar o borrar una foto, detener el servidor (Ctrl+C),
+iniciarlo de nuevo y consultar GET /api/fotos. Los cambios desaparecen y el
+arreglo vuelve a contener las dos fotos escritas en server.js.
+
+La razón es que "fotos" es un arreglo guardado solamente en la memoria RAM
+del proceso de Node.js. Cuando el proceso se detiene, esa memoria se pierde.
+En la siguiente sesión se usará PostgreSQL para guardar los datos de forma
+persistente en una base de datos.
+
+6. PROPUESTA PARA ORGANIZAR 30 RUTAS
+-----------------------------------
+No conviene colocar todas las rutas en server.js. Una organización posible es:
+
+  src/
+  ├── server.js          # Configura Express, middlewares y rutas.
+  ├── routes/
+  │   ├── fotos.routes.js
+  │   ├── usuarios.routes.js
+  │   └── albumes.routes.js
+  ├── controllers/
+  │   ├── fotos.controller.js
+  │   ├── usuarios.controller.js
+  │   └── albumes.controller.js
+  ├── services/          # Reglas de negocio y, luego, acceso a PostgreSQL.
+  └── middlewares/       # Logger, manejo de errores y validaciones.
+
+Las rutas reciben la petición y la envían al controlador. El controlador
+coordina la respuesta y el servicio contiene la lógica o comunica con la base
+de datos. Así cada archivo tiene una responsabilidad clara y el proyecto
+escala sin convertirse en un archivo difícil de mantener.
+
+7. EVIDENCIAS SUGERIDAS PARA EL PDF
+-----------------------------------
+Tomar una captura de Postman/Thunder Client para cada caso:
+1. GET inicial (200).
+2. POST (201).
+3. PATCH parcial (200), destacando que solo cambió el campo enviado.
+4. DELETE (204 y cuerpo vacío).
+5. GET de la foto eliminada (404).
+6. GET después de reiniciar el servidor, mostrando que los cambios no persisten.
+
+En el PDF se pueden copiar las secciones 1, 2, 5 y 6 de este archivo y pegar
+las seis capturas debajo de la sección de pruebas.
